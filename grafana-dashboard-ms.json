@@ -1,0 +1,125 @@
+{
+  "title": "Microservices K6 Load Test",
+  "tags": ["thesis", "microservices"],
+  "timezone": "browser",
+  "schemaVersion": 38,
+  "refresh": "5s",
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "Application CPU Usage (%)",
+      "gridPos": { "h": 10, "w": 12, "x": 0, "y": 0 },
+      "targets": [
+        {
+          "expr": "docker_container_cpu_usage_percent{container_name=\"ots_inv_service\"}",
+          "legendFormat": "Inventory Service CPU %"
+        },
+        {
+          "expr": "docker_container_cpu_usage_percent{container_name=\"ots_order_service\"}",
+          "legendFormat": "Order Service CPU %"
+        },
+        {
+          "expr": "docker_container_cpu_usage_percent{container_name=\"ots_schedule_service\"}",
+          "legendFormat": "Schedule Service CPU %"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "color": { "mode": "palette-classic" },
+          "custom": { "fillOpacity": 15, "lineWidth": 2 }
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Application Memory Usage",
+      "gridPos": { "h": 10, "w": 12, "x": 12, "y": 0 },
+      "targets": [
+        {
+          "expr": "docker_container_mem_usage{container_name=\"ots_inv_service\"}",
+          "legendFormat": "Inventory Service RAM"
+        },
+        {
+          "expr": "docker_container_mem_usage{container_name=\"ots_order_service\"}",
+          "legendFormat": "Order Service RAM"
+        },
+        {
+          "expr": "docker_container_mem_usage{container_name=\"ots_schedule_service\"}",
+          "legendFormat": "Schedule Service RAM"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "min": 0,
+          "color": { "mode": "palette-classic" },
+          "custom": { "fillOpacity": 15, "lineWidth": 2 }
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Infrastructure CPU Overhead (%)",
+      "gridPos": { "h": 10, "w": 12, "x": 0, "y": 10 },
+      "targets": [
+        {
+          "expr": "docker_container_cpu_usage_percent{container_name=\"ots_ms\"}",
+          "legendFormat": "PostgreSQL CPU %"
+        },
+        {
+          "expr": "docker_container_cpu_usage_percent{container_name=\"ots_rabbitmq\"}",
+          "legendFormat": "RabbitMQ CPU %"
+        },
+        {
+          "expr": "docker_container_cpu_usage_percent{container_name=\"ots_redis\"}",
+          "legendFormat": "Redis CPU %"
+        },
+        {
+          "expr": "docker_container_cpu_usage_percent{container_name=\"ots_gateway\"}",
+          "legendFormat": "Nginx Gateway CPU %"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "color": { "mode": "palette-classic" },
+          "custom": { "fillOpacity": 10, "lineWidth": 1 }
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Infrastructure Memory Overhead",
+      "gridPos": { "h": 10, "w": 12, "x": 12, "y": 10 },
+      "targets": [
+        {
+          "expr": "docker_container_mem_usage{container_name=\"ots_ms\"}",
+          "legendFormat": "PostgreSQL RAM"
+        },
+        {
+          "expr": "docker_container_mem_usage{container_name=\"ots_rabbitmq\"}",
+          "legendFormat": "RabbitMQ RAM"
+        },
+        {
+          "expr": "docker_container_mem_usage{container_name=\"ots_redis\"}",
+          "legendFormat": "Redis RAM"
+        },
+        {
+          "expr": "docker_container_mem_usage{container_name=\"ots_gateway\"}",
+          "legendFormat": "Nginx Gateway RAM"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "min": 0,
+          "color": { "mode": "palette-classic" },
+          "custom": { "fillOpacity": 10, "lineWidth": 1 }
+        }
+      }
+    }
+  ]
+}

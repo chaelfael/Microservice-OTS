@@ -1,0 +1,168 @@
+version: '3.8'
+
+services:
+  # 1. The Database (PostgreSQL)
+  db-postgres:
+    image: postgres:16
+    container_name: ots_ms
+    labels:
+      - "thesis_target=database"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password123
+      - POSTGRES_DB=ots_inventory
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    command: postgres -c max_connections=700
+
+  # 2. Message Broker (RabbitMQ)
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: ots_rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+
+  # 3. The Gatekeeper (Redis)
+  redis:
+    image: redis:latest
+    container_name: ots_redis
+    ports:
+      - "6379:6379"
+
+  # 4. Inventory Service
+  ots-inv:
+    build: ./OTS_INV
+    restart: on-failure
+    container_name: ots_inv_service
+    labels:
+      - "thesis_target=inventory"
+    environment:
+      - ASPNETCORE_HTTP_PORTS=80
+      - ConnectionStrings__PostgresConnection=Host=db-postgres;Port=5432;Database=ots_inventory;Username=postgres;Password=password123;Pooling=true;Maximum Pool Size=500;
+      - RabbitMQHost=rabbitmq
+      - RabbitMQPort=5672
+      - RedisConnection=redis:6379,defaultDatabase=0
+    depends_on:
+      - db-postgres
+      - rabbitmq
+      - redis
+
+  # 5. Order Service
+  ots-order:
+    build: ./OTS_ORDER
+    restart: on-failure
+    container_name: ots_order_service
+    labels:
+      - "thesis_target=order"
+    environment:
+      - ASPNETCORE_HTTP_PORTS=80
+      - ConnectionStrings__PostgresConnection=Host=db-postgres;Port=5432;Database=ots_orders;Username=postgres;Password=password123;Pooling=true;Maximum Pool Size=500;
+      - RabbitMQHost=rabbitmq
+      - RabbitMQPort=5672
+      - RedisConnection=redis:6379,defaultDatabase=1
+    depends_on:
+      - db-postgres
+      - rabbitmq
+      - redis
+
+  # 6. Schedule Service
+  ots-schedule:
+    build: ./OTS_SCHEDULE
+    restart: on-failure
+    container_name: ots_schedule_service
+    labels:
+      - "thesis_target=schedule"
+    environment:
+      - ASPNETCORE_HTTP_PORTS=80
+      - ConnectionStrings__PostgresConnection=Host=db-postgres;Port=5432;Database=ots_schedule;Username=postgres;Password=password123;Pooling=true;Maximum Pool Size=500;
+      - RabbitMQHost=rabbitmq
+      - RabbitMQPort=5672
+      - OrderTimeoutSeconds=15
+    depends_on:
+      - db-postgres
+      - rabbitmq
+
+  # 7. The Receptionist (Nginx Gateway)
+  gateway:
+    image: nginx:latest
+    container_name: ots_gateway
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - ots-inv
+      - ots-order
+      - ots-schedule
+
+  # =================================================================
+  # THE OBSERVABILITY STACK 
+  # =================================================================
+
+  # 7.5 Docker Socket Proxy (Bridges Windows/WSL2 permissions safely)
+  docker-socket-proxy:
+    image: tecnativa/docker-socket-proxy:latest
+    container_name: docker-proxy
+    environment:
+      - CONTAINERS=1 # Allow reading container stats
+      - INFO=1
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+
+  # 8. Telegraf (API-Based Hardware Metrics)
+  telegraf:
+    image: telegraf:latest
+    container_name: telegraf
+    ports:
+      - "9273:9273"
+    volumes:
+      - ./telegraf.conf:/etc/telegraf/telegraf.conf:ro
+    depends_on:
+      - docker-socket-proxy
+      - ots-inv
+      - ots-order
+      - ots-schedule
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 256M
+
+  # 9. Prometheus (Time-Series Database)
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--web.enable-remote-write-receiver'
+    depends_on:
+      - telegraf 
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
+
+  # 10. Grafana (Visual Dashboards)
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 256M
+
+volumes:
+  postgres_data:

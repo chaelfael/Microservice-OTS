@@ -1,0 +1,6 @@
+@OTS_INV_HostAddress = http://localhost:5182
+
+GET {{OTS_INV_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
